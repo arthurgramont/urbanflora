@@ -1,0 +1,21 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# Variables d'environnement & secrets
+.env
+*.local
+
+# Firebase configs auto-générées
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+
+# OS & IDE
+.vscode/
+.idea/
+*.iml
+.DS_Store
