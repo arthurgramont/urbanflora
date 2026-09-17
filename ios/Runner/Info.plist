@@ -66,5 +66,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Permissions Caméra (pour le scan HUD) -->
+	<key>NSCameraUsageDescription</key>
+	<string>UrbanFlora utilise la caméra pour identifier les plantes urbaines via Gemini.</string>
+
+	<!-- Permissions Géolocalisation (pour taguer les spots et la météo) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>UrbanFlora a besoin de votre position pour géolocaliser les plantes et récupérer la météo locale.</string>
 </dict>
 </plist>
