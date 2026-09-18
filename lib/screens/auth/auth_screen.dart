@@ -14,61 +14,95 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  bool _isSignUp = false;
   bool _rememberDevice = true;
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleAuth() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez renseigner un email et un mot de passe.'),
-        ),
+      _showSnackBar(
+        'Veuillez renseigner votre adresse e-mail et votre mot de passe.',
       );
+      return;
+    }
+
+    if (_isSignUp && password != confirmPassword) {
+      _showSnackBar('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    if (_isSignUp && password.length < 6) {
+      _showSnackBar('Le mot de passe doit comporter au moins 6 caractères.');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // Tentative de connexion, ou création automatique si nouvel utilisateur
-      try {
+      if (_isSignUp) {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        if (mounted) {
+          _showSnackBar('Compte créé avec succès ! Bienvenue sur UrbanFlora.');
+        }
+      } else {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found') {
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-        } else {
-          rethrow;
-        }
       }
 
       if (mounted) {
         context.go('/');
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur d’authentification : $e')),
-        );
+    } on FirebaseAuthException catch (e) {
+      String message = 'Une erreur est survenue lors de l’authentification.';
+      if (e.code == 'email-already-in-use') {
+        message = 'Cette adresse e-mail est déjà associée à un compte.';
+      } else if (e.code == 'invalid-email') {
+        message = 'Format d’adresse e-mail invalide.';
+      } else if (e.code == 'weak-password') {
+        message = 'Mot de passe trop court ou trop simple.';
+      } else if (e.code == 'user-not-found' ||
+          e.code == 'wrong-password' ||
+          e.code == 'invalid-credential') {
+        message =
+            'Identifiants incorrects. Vérifiez votre e-mail ou mot de passe.';
       }
+      _showSnackBar(message);
+    } catch (e) {
+      _showSnackBar('Erreur inattendue : $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showSnackBar(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -79,7 +113,10 @@ class _AuthScreenState extends State<AuthScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.neutralDark),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.neutralDark,
+          ),
           onPressed: () => context.pop(),
         ),
       ),
@@ -90,22 +127,86 @@ class _AuthScreenState extends State<AuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome Back, Explorer',
+                _isSignUp ? 'Créer un compte' : 'Bon retour parmi nous',
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
               const SizedBox(height: 8),
               Text(
-                'Sign in to sync your field herbarium across devices with Firebase Cloud.',
+                _isSignUp
+                    ? 'Rejoignez le réseau des botanistes urbains et synchronisez vos spécimens sur le Cloud.'
+                    : 'Connectez-vous pour retrouver votre herbier numérique et synchroniser vos données.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 24),
+
+              // Sélecteur d'onglet Connexion / Inscription
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isSignUp = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: !_isSignUp
+                                ? AppColors.primary
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Connexion',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: !_isSignUp
+                                  ? Colors.white
+                                  : AppColors.neutralDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isSignUp = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _isSignUp
+                                ? AppColors.primary
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Inscription',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _isSignUp
+                                  ? Colors.white
+                                  : AppColors.neutralDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
 
               // Champ Email
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: 'Botanist Email',
+                  labelText: 'Adresse e-mail',
                   prefixIcon: const Icon(Icons.mail_outline),
                   filled: true,
                   fillColor: AppColors.surface,
@@ -120,10 +221,19 @@ class _AuthScreenState extends State<AuthScreen> {
               // Champ Mot de passe
               TextField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  labelText: 'Mot de passe',
                   prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
                   filled: true,
                   fillColor: AppColors.surface,
                   border: OutlineInputBorder(
@@ -132,9 +242,28 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
               ),
+
+              // Confirmation mot de passe si Inscription
+              if (_isSignUp) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Confirmer le mot de passe',
+                    prefixIcon: const Icon(Icons.lock_reset),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
-              // Toggle Isar Session
+              // Option mémorisation locale Isar
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -157,14 +286,14 @@ class _AuthScreenState extends State<AuthScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Remember this field device (Isar DB)',
+                            'Mémoriser cet appareil (Isar local)',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            'Keep offline herbarium cache active without re-authenticating.',
+                            'Conserver l’accès hors-ligne sans avoir à se reconnecter.',
                             style: TextStyle(fontSize: 11, color: Colors.grey),
                           ),
                         ],
@@ -175,7 +304,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Bouton Sign In
+              // Bouton principal d'action
               SizedBox(
                 width: double.infinity,
                 height: 54,
@@ -190,18 +319,20 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Row(
+                      : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Sign In to Herbarium',
-                              style: TextStyle(
+                              _isSignUp
+                                  ? 'Créer mon compte'
+                                  : 'Se connecter à l’herbier',
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward),
                           ],
                         ),
                 ),

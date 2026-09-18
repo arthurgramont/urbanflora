@@ -3,15 +3,17 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../constants/app_colors.dart';
+import '../../models/spot_model.dart';
+import '../../providers/spot_provider.dart';
+import '../../services/api_service.dart';
 import '../../services/gemini_service.dart';
 import '../../services/location_service.dart';
-import '../../services/api_service.dart';
-import '../../models/spot_model.dart';
 import '../../widgets/loading_overlay.dart';
-import '../detail/spot_detail_screen.dart';
 
 class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
@@ -26,6 +28,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   bool _isInit = false;
   bool _isLoading = false;
   String _loadingText = '';
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -45,9 +48,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         await _cameraController!.initialize();
         if (mounted) setState(() => _isInit = true);
       }
-    } catch (_) {
-      // Géré silencieusement si émulateur sans caméra physique
-    }
+    } catch (_) {}
   }
 
   @override
@@ -56,95 +57,131 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     super.dispose();
   }
 
-  Future<void> _processCapture() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return;
-    }
+  Future<String> _saveImagePermanently(String sourcePath) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final fileName = 'spot_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    await File(sourcePath).copy('${appDir.path}/$fileName');
+    return fileName;
+  }
+
+  Future<void> _processImage(String rawPath) async {
+    setState(() {
+      _isLoading = true;
+      _loadingText = 'Sauvegarde locale...';
+    });
 
     try {
-      setState(() {
-        _isLoading = true;
-        _loadingText = 'Acquisition de la position & météo...';
-      });
+      // 1. Sauvegarde physique immédiate de l'image
+      final fileName = await _saveImagePermanently(rawPath);
 
-      // 1. Géolocalisation GPS
-      final locationService = LocationService();
-      final position = await locationService.getCurrentPosition();
-
-      // 2. Météo locale via Open-Meteo REST API
-      final apiService = ApiService();
-      final weather = await apiService.fetchWeather(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-
-      // 3. Prise de vue caméra
-      setState(() => _loadingText = 'Capture du spécimen...');
-      final xFile = await _cameraController!.takePicture();
-
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final savedImage = await File(xFile.path)
-          .copy('${appDir.path}/$fileName');
-
-      // 4. Analyse visuelle par Gemini Vision
-      setState(() => _loadingText = 'Identification botanique (Gemini)...');
-      final geminiService = GeminiService();
-      final aiData = await geminiService.identifyPlant(savedImage.path);
-
-      if (!mounted) return;
-
+      // 2. Création de l'observation brute (Isar)
       final spot = SpotModel()
         ..cloudId = DateTime.now().millisecondsSinceEpoch.toString()
-        ..commonName = aiData['commonName'] ?? 'Spécimen inconnu'
-        ..scientificName = aiData['scientificName'] ?? 'Espèce indéterminée'
-        ..family = aiData['family'] ?? 'Flore spontanée'
-        ..confidence = (aiData['confidence'] as num?)?.toDouble() ?? 0.85
-        ..ecologicalNiche = aiData['ecologicalNiche'] ?? 'Micro-habitat urbain.'
-        ..imagePath = savedImage.path
-        ..latitude = position.latitude
-        ..longitude = position.longitude
+        ..commonName = 'Spécimen en attente d’analyse'
+        ..scientificName = 'Non identifié'
+        ..family = 'Flore spontanée'
+        ..confidence = 0.0
+        ..ecologicalNiche = 'Spécimen capturé sur le terrain. Analyse IA à lancer dès le retour du réseau.'
+        ..imagePath = fileName
+        ..latitude = 0.0
+        ..longitude = 0.0
         ..districtName = 'Zone urbaine'
-        ..temperature = weather.temperature
-        ..humidity = weather.humidity
-        ..rainRisk = weather.rainProbability
+        ..temperature = 20.0
+        ..humidity = 50
+        ..rainRisk = 0.0
         ..createdAt = DateTime.now()
         ..isSynced = false;
 
+      // 3. Écriture directe dans la base Isar
+      await ref.read(spotListProvider.notifier).addSpot(spot);
+
+      if (!mounted) return;
       setState(() => _isLoading = false);
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => SpotDetailScreen(spot: spot)),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Photo enregistrée dans votre herbier !'),
+          backgroundColor: AppColors.primary,
+        ),
       );
+
+      // 4. Retour direct à l'accueil
+      context.pop();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la sauvegarde : $e')),
+      );
     }
+  }
+
+  Future<void> _pickFromGallery() async {
+    final xFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (xFile != null) {
+      await _processImage(xFile.path);
+    }
+  }
+
+  Future<void> _captureWithCamera() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized)
+      return;
+    final xFile = await _cameraController!.takePicture();
+    await _processImage(xFile.path);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInit || _cameraController == null) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.secondary),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Preview Caméra
-          CameraPreview(_cameraController!),
+          if (_isInit && _cameraController != null)
+            CameraPreview(_cameraController!)
+          else
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.photo_camera_back_outlined,
+                    size: 72,
+                    color: AppColors.secondary,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Aucune caméra physique détectée',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Utilisez la galerie pour charger une photo de test.',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _pickFromGallery,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('Sélectionner depuis la galerie'),
+                  ),
+                ],
+              ),
+            ),
 
-          // 2. HUD - Header statuts
+          // En-tête HUD
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
@@ -164,7 +201,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                             color: Colors.white,
                             size: 22,
                           ),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: () => context.pop(),
                         ),
                         const SizedBox(width: 4),
                         Container(
@@ -185,7 +222,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                               ),
                               SizedBox(width: 6),
                               Text(
-                                'GPS Lock • Isar DB Ready',
+                                'GPS actif • Isar local',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -198,8 +235,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.flash_off, color: Colors.white),
-                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.photo_library_outlined,
+                        color: Colors.white,
+                      ),
+                      tooltip: 'Choisir depuis la galerie',
+                      onPressed: _isLoading ? null : _pickFromGallery,
                     ),
                   ],
                 ),
@@ -207,52 +248,57 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             ),
           ),
 
-          // 3. Réticule central Stitch
-          Center(
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: 0.8),
-                  width: 2,
+          // Réticule central
+          if (_isInit && _cameraController != null)
+            Center(
+              child: Container(
+                width: 240,
+                height: 240,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: AppColors.secondary.withValues(alpha: 0.8),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.center_focus_weak,
-                  color: Colors.white54,
-                  size: 48,
-                ),
-              ),
-            ),
-          ),
-
-          // 4. Déclencheur bas de page
-          SafeArea(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 28),
-                child: GestureDetector(
-                  onTap: _isLoading ? null : _processCapture,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
-                      color: AppColors.primary,
-                    ),
-                    child: const Icon(Icons.eco, color: Colors.white, size: 36),
+                child: const Center(
+                  child: Icon(
+                    Icons.center_focus_weak,
+                    color: Colors.white54,
+                    size: 48,
                   ),
                 ),
               ),
             ),
-          ),
 
-          // 5. Loading Overlay pendant l'analyse
+          // Déclencheur bas de page
+          if (_isInit && _cameraController != null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 28),
+                  child: GestureDetector(
+                    onTap: _isLoading ? null : _captureWithCamera,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        color: AppColors.primary,
+                      ),
+                      child: const Icon(
+                        Icons.eco,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           if (_isLoading) LoadingOverlay(message: _loadingText),
         ],
       ),

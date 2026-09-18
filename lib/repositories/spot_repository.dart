@@ -25,14 +25,24 @@ class SpotRepository {
 
   // Sauvegarde locale + synchro Firestore conditionnelle
   Future<void> saveSpot(SpotModel spot) async {
-    // 1. Sauvegarde locale immédiate (fonctionne hors-ligne)
+    // 1. Sauvegarde locale Isar garantie et prioritaire (instantanée)
     final localId = await _isarService.saveSpot(spot);
     spot.id = localId;
 
-    // 2. Tentative de synchronisation Cloud si un compte est connecté
+    // 2. Tâche Cloud en arrière-plan (ne bloque JAMAIS la fonction ni l'UI)
+    _trySyncInSilence(spot, localId);
+  }
+
+  void _trySyncInSilence(SpotModel spot, int localId) async {
     try {
+      // Timeout strict de 2 secondes pour Firebase Auth
       User? user = _auth.currentUser;
-      user ??= (await _auth.signInAnonymously()).user;
+      if (user == null) {
+        final authResult = await _auth.signInAnonymously().timeout(
+          const Duration(seconds: 2),
+        );
+        user = authResult.user;
+      }
 
       if (user != null) {
         await _firestore
@@ -54,13 +64,13 @@ class SpotRepository {
               'humidity': spot.humidity,
               'rainRisk': spot.rainRisk,
               'createdAt': spot.createdAt.toIso8601String(),
-            });
+            })
+            .timeout(const Duration(seconds: 2));
 
-        // 3. Si l'envoi cloud a réussi, on met à jour le flag local
         await _isarService.markAsSynced(localId);
       }
-    } catch (e) {
-      debugPrint('Échec synchro Firestore immédiate : $e');
+    } catch (_) {
+      // Hors-ligne : ignoré silencieusement, la donnée reste sagement dans Isar
     }
   }
 

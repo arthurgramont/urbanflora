@@ -33,16 +33,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.sync, color: AppColors.primary),
+            tooltip: 'Synchroniser et analyser',
             onPressed: () async {
-              final count = await ref
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Analyse IA et synchronisation en cours...'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+
+              final analyzedCount = await ref
+                  .read(spotListProvider.notifier)
+                  .analyzePendingSpots();
+              final syncedCount = await ref
                   .read(spotListProvider.notifier)
                   .syncWithCloud();
+
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      '$count spécimens synchronisés avec Firebase !',
+                      '$analyzedCount analysé(s) par l’IA • $syncedCount synchronisé(s) sur le Cloud',
                     ),
+                    backgroundColor: AppColors.primary,
                   ),
                 );
               }
