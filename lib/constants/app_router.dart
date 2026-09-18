@@ -12,22 +12,13 @@ import '../screens/weather/weather_screen.dart';
 final appRouter = GoRouter(
   initialLocation: '/onboarding',
   routes: [
-    GoRoute(
-      path: '/', 
-      builder: (context, state) => const HomeScreen()
-    ),
+    GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const OnboardingScreen(),
     ),
-    GoRoute(
-      path: '/auth', 
-      builder: (context, state) => const AuthScreen()
-    ),
-    GoRoute(
-      path: '/scan', 
-      builder: (context, state) => const ScanScreen()
-    ),
+    GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
+    GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
     GoRoute(
       path: '/weather',
       builder: (context, state) => const WeatherScreen(),

@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../models/spot_model.dart';
 
 class IsarService {

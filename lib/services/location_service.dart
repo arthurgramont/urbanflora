@@ -4,7 +4,9 @@ class LocationService {
   Future<Position> getCurrentPosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Le service de localisation est désactivé sur cet appareil.');
+      throw Exception(
+        'Le service de localisation est désactivé sur cet appareil.',
+      );
     }
 
     LocationPermission permission = await Geolocator.checkPermission();

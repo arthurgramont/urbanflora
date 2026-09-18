@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../constants/app_colors.dart';
 import '../../providers/spot_provider.dart';
 import '../../widgets/spot_card.dart';
-import '../scan/scan_screen.dart';
 
 import 'package:go_router/go_router.dart';
 
