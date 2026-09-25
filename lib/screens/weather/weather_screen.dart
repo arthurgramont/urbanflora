@@ -1,125 +1,216 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants/app_colors.dart';
-import '../../providers/weather_provider.dart';
+import '../../models/weather_model.dart';
+import '../../repositories/weather_repository.dart';
 
-class WeatherScreen extends ConsumerWidget {
+class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final weatherAsync = ref.watch(currentWeatherProvider);
+  State<WeatherScreen> createState() => _WeatherScreenState();
+}
 
+class _WeatherScreenState extends State<WeatherScreen> {
+  final WeatherRepository _repository = WeatherRepository();
+  bool _isLoading = true;
+  WeatherModel? _weather;
+  double _lat = 48.8566;
+  double _lon = 2.3522;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeather();
+  }
+
+  Future<void> _loadWeather() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _repository.getCurrentWeatherWithLocation();
+      setState(() {
+        _weather = result.weather;
+        _lat = result.latitude;
+        _lon = result.longitude;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
-          'Urban Microclimates',
+          'Météo & Botanique',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        centerTitle: true,
       ),
-      body: weatherAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-        error: (err, _) => Center(child: Text('Erreur météo : $err')),
-        data: (data) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.wb_sunny_outlined,
-                      size: 56,
-                      color: AppColors.tertiary,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Erreur : $_error'),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _loadWeather,
+                    child: const Text('Réessayer'),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadWeather,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Card(
+                    elevation: 0,
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '${data.weather.temperature.toStringAsFixed(1)}°C',
-                      style: const TextStyle(
-                        fontSize: 42,
-                        fontWeight: FontWeight.bold,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.wb_sunny,
+                            size: 56,
+                            color: Colors.orange,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            '${_weather!.temperature.toStringAsFixed(1)} °C',
+                            style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Coordonnées : ${_lat.toStringAsFixed(2)}, ${_lon.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Icon(
+                                    Icons.water_drop,
+                                    color: Colors.blue,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${_weather!.humidity} %',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Humidité',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Icon(
+                                    Icons.umbrella,
+                                    color: Colors.indigo,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${_weather!.rainProbability.toStringAsFixed(0)} %',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Pluie',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      data.weather.conditionText,
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _InfoTile(
-                      label: 'Humidité',
-                      value: '${data.weather.humidity}%',
-                      icon: Icons.water_drop_outlined,
-                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _InfoTile(
-                      label: 'Risque Pluie',
-                      value:
-                          '${data.weather.rainProbability.toStringAsFixed(0)}%',
-                      icon: Icons.umbrella_outlined,
+                  const SizedBox(height: 16),
+                  Card(
+                    elevation: 0,
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.lightbulb_outline,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Conseil d’observation',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _weather!.rainProbability > 40
+                                      ? 'Temps humide : observez les pieds d’arbres et fissures de trottoir, les mousses et lichens y sont particulièrement actifs.'
+                                      : 'Temps sec : conditions optimales pour observer la floraison spontanée le long des friches et façades ensoleillées.',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _InfoTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: AppColors.primary),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
+            ),
     );
   }
 }

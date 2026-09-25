@@ -11,6 +11,12 @@ final spotRepositoryProvider = Provider<SpotRepository>((ref) {
   return SpotRepository();
 });
 
+final spotListProvider =
+    StateNotifierProvider<SpotListNotifier, AsyncValue<List<SpotModel>>>((ref) {
+      final repository = ref.watch(spotRepositoryProvider);
+      return SpotListNotifier(repository);
+    });
+
 class SpotListNotifier extends StateNotifier<AsyncValue<List<SpotModel>>> {
   final SpotRepository _repository;
 
@@ -19,9 +25,8 @@ class SpotListNotifier extends StateNotifier<AsyncValue<List<SpotModel>>> {
   }
 
   Future<void> loadSpots() async {
-    state = const AsyncValue.loading();
     try {
-      final spots = await _repository.getLocalSpots();
+      final spots = await _repository.getSpots();
       state = AsyncValue.data(spots);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -29,25 +34,28 @@ class SpotListNotifier extends StateNotifier<AsyncValue<List<SpotModel>>> {
   }
 
   Future<void> addSpot(SpotModel spot) async {
-    try {
-      await _repository.saveSpot(spot);
-      await loadSpots();
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+    await _repository.saveSpot(spot);
+    await loadSpots();
+  }
+
+  Future<void> deleteSpot(SpotModel spot) async {
+    await _repository.deleteSpot(spot.id, spot.cloudId);
+    await loadSpots();
+  }
+
+  Future<void> clearAllSpots() async {
+    await _repository.clearAllData();
+    await loadSpots();
   }
 
   Future<int> syncWithCloud() async {
-    final syncedCount = await _repository.syncPendingSpots();
-    if (syncedCount > 0) {
-      await loadSpots();
-    }
-    return syncedCount;
+    final count = await _repository.syncAllWithCloud();
+    await loadSpots();
+    return count;
   }
 
   Future<int> analyzePendingSpots() async {
     final currentSpots = state.value ?? [];
-    // Récupère les spécimens non encore identifiés (confiance à 0)
     final pending = currentSpots.where((s) => s.confidence == 0.0).toList();
 
     if (pending.isEmpty) return 0;
@@ -58,14 +66,12 @@ class SpotListNotifier extends StateNotifier<AsyncValue<List<SpotModel>>> {
 
     for (final spot in pending) {
       try {
-        // Reconstitution du chemin d'accès absolu au fichier sur disque
         final fileName = spot.imagePath.split('/').last;
         final absolutePath = '${appDir.path}/$fileName';
 
         final file = File(absolutePath);
         if (!await file.exists()) continue;
 
-        // Appel à Gemini Vision
         final aiData = await gemini.identifyPlant(absolutePath);
 
         spot.commonName = aiData['commonName'] ?? spot.commonName;
@@ -76,26 +82,25 @@ class SpotListNotifier extends StateNotifier<AsyncValue<List<SpotModel>>> {
             aiData['ecologicalNiche'] ?? spot.ecologicalNiche;
         spot.isSynced = false;
 
-        // Mise à jour de l'enregistrement dans Isar
         await _repository.saveSpot(spot);
         processed++;
+        await loadSpots();
       } catch (e) {
-        // Affiche l'erreur dans la console si Gemini bloque
         // ignore: avoid_print
-        print('Erreur analyse IA spot ${spot.id} : $e');
+        print('Erreur analyse IA : $e');
       }
     }
 
-    // Rafraîchit l'affichage de l'herbier avec les nouveaux noms
-    if (processed > 0) {
-      await loadSpots();
-    }
     return processed;
   }
-}
 
-final spotListProvider =
-    StateNotifierProvider<SpotListNotifier, AsyncValue<List<SpotModel>>>((ref) {
-      final repository = ref.watch(spotRepositoryProvider);
-      return SpotListNotifier(repository);
-    });
+  Future<void> reloadForNewUser() async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.fetchSpotsFromCloud();
+      await loadSpots();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+}

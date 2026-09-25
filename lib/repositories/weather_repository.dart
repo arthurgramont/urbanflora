@@ -17,11 +17,16 @@ class WeatherRepository {
 
     try {
       final position = await _locationService.getCurrentPosition();
-      if (position != null) {
+      if (position != null &&
+          position.latitude != 0.0 &&
+          position.longitude != 0.0) {
         lat = position.latitude;
         lon = position.longitude;
       }
-    } catch (_) {}
+    } catch (e) {
+      // ignore: avoid_print
+      print('Info GPS WeatherRepository (fallback Paris utilisé): $e');
+    }
 
     try {
       final weather = await _apiService.fetchWeather(
@@ -30,12 +35,15 @@ class WeatherRepository {
       );
 
       return (weather: weather, latitude: lat, longitude: lon);
-    } catch (_) {
+    } catch (e) {
+      // ignore: avoid_print
+      print('Erreur WeatherRepository fetchWeather: $e');
+
       final fallbackWeather = WeatherModel(
-        temperature: 20.0,
-        humidity: 50,
-        rainProbability: 0.0,
-        weatherCode: 0,
+        temperature: 18.5,
+        humidity: 60,
+        rainProbability: 10.0,
+        weatherCode: 1,
       );
 
       return (weather: fallbackWeather, latitude: lat, longitude: lon);

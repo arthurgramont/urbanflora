@@ -12,12 +12,12 @@ import '../screens/weather/weather_screen.dart';
 final appRouter = GoRouter(
   initialLocation: '/onboarding',
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const OnboardingScreen(),
     ),
     GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
+    GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
     GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
     GoRoute(
       path: '/weather',
@@ -30,6 +30,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/detail',
       builder: (context, state) {
+        if (state.extra is Map<String, dynamic>) {
+          final map = state.extra as Map<String, dynamic>;
+          return SpotDetailScreen(
+            spot: map['spot'] as SpotModel,
+            isNewCapture: map['isNew'] as bool? ?? false,
+          );
+        }
         final spot = state.extra as SpotModel;
         return SpotDetailScreen(spot: spot);
       },

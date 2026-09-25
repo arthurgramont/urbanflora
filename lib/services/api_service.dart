@@ -10,10 +10,8 @@ class ApiService {
           dio ??
           Dio(
             BaseOptions(
-              baseUrl: 'https://api.open-meteo.com/v1',
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 10),
-              responseType: ResponseType.json,
             ),
           );
 
@@ -22,31 +20,49 @@ class ApiService {
     required double longitude,
   }) async {
     try {
+      final lat = (latitude == 0.0 && longitude == 0.0) ? 48.8566 : latitude;
+      final lon = (latitude == 0.0 && longitude == 0.0) ? 2.3522 : longitude;
+
       final response = await _dio.get(
-        '/forecast',
+        'https://api.open-meteo.com/v1/forecast',
         queryParameters: {
-          'latitude': latitude,
-          'longitude': longitude,
-          'current_': 'temperature_2m,relative_humidity_2m,weather_code,precipitation_probability',
+          'latitude': lat,
+          'longitude': lon,
+          'current':
+              'temperature_2m,relative_humidity_2m,precipitation,weather_code',
+          'hourly': 'precipitation_probability',
           'timezone': 'auto',
         },
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data as Map<String, dynamic>;
-        return WeatherModel.fromJson(data);
-      } else {
-        throw Exception(
-          'Réponse inattendue du serveur météo : ${response.statusCode}',
+        final current = data['current'] as Map<String, dynamic>? ?? {};
+
+        double rainProb = 0.0;
+        final hourly = data['hourly'] as Map<String, dynamic>?;
+        if (hourly != null && hourly['precipitation_probability'] is List) {
+          final probs = hourly['precipitation_probability'] as List;
+          if (probs.isNotEmpty && probs.first != null) {
+            rainProb = (probs.first as num).toDouble();
+          }
+        }
+
+        return WeatherModel(
+          temperature: (current['temperature_2m'] as num?)?.toDouble() ?? 0.0,
+          humidity: (current['relative_humidity_2m'] as num?)?.toInt() ?? 0,
+          rainProbability: rainProb > 0.0
+              ? rainProb
+              : ((current['precipitation'] as num?)?.toDouble() ?? 0.0) * 10,
+          weatherCode: (current['weather_code'] as num?)?.toInt() ?? 0,
         );
       }
-    } on DioException catch (e) {
-      final errorMessage = e.response?.data?['reason'] ?? e.message;
-      throw Exception(
-        'Erreur réseau Dio lors de la récupération de la météo : $errorMessage',
-      );
+
+      throw Exception('Erreur API Open-Meteo: status ${response.statusCode}');
     } catch (e) {
-      throw Exception('Erreur inattendue: $e');
+      // ignore: avoid_print
+      print('Erreur fetchWeather ApiService: $e');
+      rethrow;
     }
   }
 }

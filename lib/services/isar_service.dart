@@ -1,4 +1,4 @@
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/spot_model.dart';
@@ -7,12 +7,12 @@ class IsarService {
   late Future<Isar> db;
 
   IsarService() {
-    db = _openDatabase();
+    db = _openDB();
   }
 
-  Future<Isar> _openDatabase() async {
+  Future<Isar> _openDB() async {
+    final dir = await getApplicationDocumentsDirectory();
     if (Isar.instanceNames.isEmpty) {
-      final dir = await getApplicationDocumentsDirectory();
       return await Isar.open(
         [SpotModelSchema],
         directory: dir.path,
@@ -22,27 +22,18 @@ class IsarService {
     return Future.value(Isar.getInstance());
   }
 
-  // Récupérer toutes les observations locales (triées par date décroissante)
+  Future<int> saveSpot(SpotModel newSpot) async {
+    final isar = await db;
+    return await isar.writeTxn(() async {
+      return await isar.spotModels.put(newSpot);
+    });
+  }
+
   Future<List<SpotModel>> getAllSpots() async {
     final isar = await db;
     return await isar.spotModels.where().sortByCreatedAtDesc().findAll();
   }
 
-  // Sauvegarder ou mettre à jour un spot en cache local
-  Future<int> saveSpot(SpotModel spot) async {
-    final isar = await db;
-    return await isar.writeTxn(() async {
-      return await isar.spotModels.put(spot);
-    });
-  }
-
-  // Récupérer les spots en attente de synchronisation Firebase
-  Future<List<SpotModel>> getUnsyncedSpots() async {
-    final isar = await db;
-    return await isar.spotModels.filter().isSyncedEqualTo(false).findAll();
-  }
-
-  // Marquer un spot comme synchronisé
   Future<void> markAsSynced(int id) async {
     final isar = await db;
     await isar.writeTxn(() async {
@@ -51,6 +42,20 @@ class IsarService {
         spot.isSynced = true;
         await isar.spotModels.put(spot);
       }
+    });
+  }
+
+  Future<void> deleteSpot(int id) async {
+    final isar = await db;
+    await isar.writeTxn(() async {
+      await isar.spotModels.delete(id);
+    });
+  }
+
+  Future<void> clearAllLocalSpots() async {
+    final isar = await db;
+    await isar.writeTxn(() async {
+      await isar.spotModels.clear();
     });
   }
 }

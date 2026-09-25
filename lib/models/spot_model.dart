@@ -1,4 +1,4 @@
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'spot_model.g.dart';
 
@@ -7,23 +7,23 @@ class SpotModel {
   Id id = Isar.autoIncrement;
 
   @Index(type: IndexType.value)
-  late String cloudId; // Identifiant unique pour Firestore
+  late String cloudId;
 
-  late String commonName; // Nom usuel (ex: Pellitory-of-the-wall)
-  late String scientificName; // Nom latin (ex: Parietaria judaica)
-  late String family; // Famille botanique (ex: Urticaceae)
-  late double confidence; // Taux de confiance Gemini (ex: 0.96)
-  late String ecologicalNiche; // Analyse environnementale Gemini
-  late String imagePath; // Chemin local du cliché capturé
+  late String commonName;
+  late String scientificName;
+  late String family;
+  late double confidence;
+  late String ecologicalNiche;
+  late String imagePath;
 
   late double latitude;
   late double longitude;
-  String? districtName; // Ex: Paris 12e
+  String? districtName;
 
   late double temperature;
   late int humidity;
   late double rainRisk;
 
   late DateTime createdAt;
-  bool isSynced = false; // true si déjà poussé dans Firebase
+  bool isSynced = false;
 }

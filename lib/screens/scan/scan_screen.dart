@@ -10,10 +10,10 @@ import 'package:path_provider/path_provider.dart';
 import '../../constants/app_colors.dart';
 import '../../models/spot_model.dart';
 import '../../providers/spot_provider.dart';
-import '../../services/api_service.dart';
-import '../../services/gemini_service.dart';
-import '../../services/location_service.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../services/gemini_service.dart';
+
+import 'package:geolocator/geolocator.dart';
 
 class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
@@ -67,24 +67,51 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Future<void> _processImage(String rawPath) async {
     setState(() {
       _isLoading = true;
-      _loadingText = 'Sauvegarde locale...';
+      _loadingText = 'Sauvegarde de la photo...';
     });
 
     try {
-      // 1. Sauvegarde physique immédiate de l'image
       final fileName = await _saveImagePermanently(rawPath);
+      final appDir = await getApplicationDocumentsDirectory();
+      final fullPath = '${appDir.path}/$fileName';
 
-      // 2. Création de l'observation brute (Isar)
+      double lat = 0.0;
+      double lon = 0.0;
+      try {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          lat = lastKnown.latitude;
+          lon = lastKnown.longitude;
+        }
+      } catch (_) {}
+
+      setState(() => _loadingText = 'Identification botanique (IA)...');
+      Map<String, dynamic>? aiData;
+      try {
+        aiData = await GeminiService()
+            .identifyPlant(fullPath)
+            .timeout(const Duration(seconds: 15));
+      } catch (e) {
+        // ignore: avoid_print
+        print('Erreur détaillée analyse IA : $e');
+        aiData = null;
+      }
+
+      final isOnlineSuccess = aiData != null;
+
       final spot = SpotModel()
         ..cloudId = DateTime.now().millisecondsSinceEpoch.toString()
-        ..commonName = 'Spécimen en attente d’analyse'
-        ..scientificName = 'Non identifié'
-        ..family = 'Flore spontanée'
-        ..confidence = 0.0
-        ..ecologicalNiche = 'Spécimen capturé sur le terrain. Analyse IA à lancer dès le retour du réseau.'
+        ..commonName = aiData?['commonName'] ?? 'Spécimen en attente d’analyse'
+        ..scientificName =
+            aiData?['scientificName'] ?? 'Non identifié (hors-ligne)'
+        ..family = aiData?['family'] ?? 'Flore spontanée'
+        ..confidence = (aiData?['confidence'] as num?)?.toDouble() ?? 0.0
+        ..ecologicalNiche =
+            aiData?['ecologicalNiche'] ??
+            'Capturé hors-ligne. En attente de synchronisation réseau.'
         ..imagePath = fileName
-        ..latitude = 0.0
-        ..longitude = 0.0
+        ..latitude = lat
+        ..longitude = lon
         ..districtName = 'Zone urbaine'
         ..temperature = 20.0
         ..humidity = 50
@@ -92,27 +119,32 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         ..createdAt = DateTime.now()
         ..isSynced = false;
 
-      // 3. Écriture directe dans la base Isar
-      await ref.read(spotListProvider.notifier).addSpot(spot);
-
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Photo enregistrée dans votre herbier !'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-
-      // 4. Retour direct à l'accueil
-      context.pop();
+      if (isOnlineSuccess) {
+        context.pushReplacement(
+          '/detail',
+          extra: {'spot': spot, 'isNew': true},
+        );
+      } else {
+        await ref.read(spotListProvider.notifier).addSpot(spot);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Mode hors-ligne : Spécimen enregistré dans votre herbier.',
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        context.pop();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la sauvegarde : $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 
@@ -124,8 +156,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _captureWithCamera() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized)
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
       return;
+    }
     final xFile = await _cameraController!.takePicture();
     await _processImage(xFile.path);
   }
@@ -181,7 +214,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ),
 
-          // En-tête HUD
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
@@ -203,35 +235,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                           ),
                           onPressed: () => context.pop(),
                         ),
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.circle,
-                                color: AppColors.secondary,
-                                size: 10,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'GPS actif • Isar local',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                     IconButton(
@@ -248,19 +251,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             ),
           ),
 
-          // Réticule central
           if (_isInit && _cameraController != null)
             Center(
-              child: Container(
+              child: SizedBox(
                 width: 240,
                 height: 240,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: AppColors.secondary.withValues(alpha: 0.8),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
                 child: const Center(
                   child: Icon(
                     Icons.center_focus_weak,
@@ -271,7 +266,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ),
 
-          // Déclencheur bas de page
           if (_isInit && _cameraController != null)
             SafeArea(
               child: Align(

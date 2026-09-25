@@ -77,6 +77,7 @@ const SpotModelSchema = CollectionSchema(
       type: IsarType.double,
     ),
   },
+
   estimateSize: _spotModelEstimateSize,
   serialize: _spotModelSerialize,
   deserialize: _spotModelDeserialize,
@@ -99,10 +100,11 @@ const SpotModelSchema = CollectionSchema(
   },
   links: {},
   embeddedSchemas: {},
+
   getId: _spotModelGetId,
   getLinks: _spotModelGetLinks,
   attach: _spotModelAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _spotModelEstimateSize(
@@ -771,6 +773,7 @@ extension SpotModelQueryFilter
         FilterCondition.equalTo(
           property: r'confidence',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -789,6 +792,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'confidence',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -806,6 +810,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'confidence',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -827,6 +832,7 @@ extension SpotModelQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+
           epsilon: epsilon,
         ),
       );
@@ -1624,6 +1630,7 @@ extension SpotModelQueryFilter
         FilterCondition.equalTo(
           property: r'latitude',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1641,6 +1648,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'latitude',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1658,6 +1666,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'latitude',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1679,6 +1688,7 @@ extension SpotModelQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+
           epsilon: epsilon,
         ),
       );
@@ -1694,6 +1704,7 @@ extension SpotModelQueryFilter
         FilterCondition.equalTo(
           property: r'longitude',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1712,6 +1723,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'longitude',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1729,6 +1741,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'longitude',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1750,6 +1763,7 @@ extension SpotModelQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+
           epsilon: epsilon,
         ),
       );
@@ -1765,6 +1779,7 @@ extension SpotModelQueryFilter
         FilterCondition.equalTo(
           property: r'rainRisk',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1782,6 +1797,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'rainRisk',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1799,6 +1815,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'rainRisk',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1820,6 +1837,7 @@ extension SpotModelQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+
           epsilon: epsilon,
         ),
       );
@@ -1976,6 +1994,7 @@ extension SpotModelQueryFilter
         FilterCondition.equalTo(
           property: r'temperature',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -1994,6 +2013,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'temperature',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -2011,6 +2031,7 @@ extension SpotModelQueryFilter
           include: include,
           property: r'temperature',
           value: value,
+
           epsilon: epsilon,
         ),
       );
@@ -2032,6 +2053,7 @@ extension SpotModelQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+
           epsilon: epsilon,
         ),
       );

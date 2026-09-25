@@ -16,7 +16,6 @@ class OnboardingScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header avec logo et bouton Skip
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -45,17 +44,6 @@ class OnboardingScreen extends StatelessWidget {
                               fontSize: 16,
                             ),
                           ),
-                          Text(
-                            'FIELD GUIDE V2.4',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.neutralDark.withValues(
-                                alpha: 0.5,
-                              ),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
                         ],
                       ),
                     ],
@@ -63,7 +51,7 @@ class OnboardingScreen extends StatelessWidget {
                   TextButton(
                     onPressed: () => context.go('/'),
                     child: Text(
-                      'Skip',
+                      'Passer',
                       style: TextStyle(
                         color: AppColors.neutralDark.withValues(alpha: 0.6),
                       ),
@@ -73,7 +61,6 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Carte visuelle centrale façon HUD
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -101,7 +88,7 @@ class OnboardingScreen extends StatelessWidget {
                           Icon(Icons.circle, color: AppColors.primary, size: 8),
                           SizedBox(width: 6),
                           Text(
-                            'SCAN HUD ACTIVE',
+                            'SCAN ACTIF',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -125,15 +112,15 @@ class OnboardingScreen extends StatelessWidget {
                       children: [
                         _FeatureBadge(
                           icon: Icons.auto_awesome,
-                          text: 'Multimodal Gemini AI',
+                          text: 'IA Gemini',
                         ),
                         _FeatureBadge(
                           icon: Icons.bolt,
-                          text: 'Offline Isar Cache',
+                          text: 'Cache Isar Hors-ligne',
                         ),
                         _FeatureBadge(
                           icon: Icons.thermostat,
-                          text: 'Microclimates',
+                          text: 'Microclimats & météo',
                         ),
                       ],
                     ),
@@ -142,19 +129,17 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              // Titre d'accroche et description
               Text(
-                'Discover the Wild Side of Your Concrete Jungle',
+                'Découvrez la flore urbaine en temps réel',
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
               const SizedBox(height: 12),
               Text(
-                'Harness multimodal AI to identify spontaneous urban flora in real-time, log micro-habitats offline, and sync your herbarium anywhere.',
+                'Utilisez l\'IA multimodale pour identifier la flore urbaine spontanée en temps réel, enregistrer les micro-habitats hors ligne et synchroniser votre herbarium n\'importe où.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const Spacer(),
 
-              // Bouton Get Started
               SizedBox(
                 width: double.infinity,
                 height: 54,
@@ -171,7 +156,7 @@ class OnboardingScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Get Started',
+                        'Démarrer',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -185,19 +170,18 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14),
 
-              // Lien de connexion rapide
               Center(
                 child: GestureDetector(
                   onTap: () => context.push('/auth'),
                   child: RichText(
                     text: TextSpan(
-                      text: 'Already have an account? ',
+                      text: 'Vous avez déjà un compte ? ',
                       style: TextStyle(
                         color: AppColors.neutralDark.withValues(alpha: 0.7),
                       ),
                       children: const [
                         TextSpan(
-                          text: 'Sign In',
+                          text: 'Se connecter',
                           style: TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,

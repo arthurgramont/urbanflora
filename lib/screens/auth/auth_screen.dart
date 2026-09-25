@@ -1,17 +1,19 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../constants/app_colors.dart';
+import '../../providers/spot_provider.dart';
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -59,6 +61,7 @@ class _AuthScreenState extends State<AuthScreen> {
           email: email,
           password: password,
         );
+        await ref.read(spotListProvider.notifier).clearAllSpots();
         if (mounted) {
           _showSnackBar('Compte créé avec succès ! Bienvenue sur UrbanFlora.');
         }
@@ -67,6 +70,7 @@ class _AuthScreenState extends State<AuthScreen> {
           email: email,
           password: password,
         );
+        await ref.read(spotListProvider.notifier).reloadForNewUser();
       }
 
       if (mounted) {
@@ -109,17 +113,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: AppColors.neutralDark,
-          ),
-          onPressed: () => context.pop(),
-        ),
-      ),
+      //
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -139,7 +133,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Sélecteur d'onglet Connexion / Inscription
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.surface,
@@ -201,7 +194,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Champ Email
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -218,7 +210,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Champ Mot de passe
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -243,7 +234,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
 
-              // Confirmation mot de passe si Inscription
               if (_isSignUp) ...[
                 const SizedBox(height: 16),
                 TextField(
@@ -263,7 +253,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
               const SizedBox(height: 16),
 
-              // Option mémorisation locale Isar
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -304,7 +293,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Bouton principal d'action
               SizedBox(
                 width: double.infinity,
                 height: 54,
