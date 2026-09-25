@@ -73,5 +73,10 @@
 	<!-- Permissions Géolocalisation (pour taguer les spots et la météo) -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>UrbanFlora a besoin de votre position pour géolocaliser les plantes et récupérer la météo locale.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+			<string>https</string>
+			<string>http</string>
+	</array>
 </dict>
 </plist>

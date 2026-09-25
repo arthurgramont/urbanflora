@@ -5,10 +5,6 @@
 .packages
 build/
 
-# Variables d'environnement & secrets
-.env
-*.local
-
 # Firebase configs auto-générées
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
