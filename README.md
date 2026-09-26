@@ -44,12 +44,15 @@ Onboarding -> Authentification -> Scan -> Identification IA
 ## Démarrage rapide
 
 ```bash
+cp .env.example .env
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter run
 ```
 
-La configuration complète, étape par étape, se trouve dans le [guide d'installation](docs/setup_guide.md).
+Après la copie, renseigner `FIREBASE_APP_CHECK_DEBUG_TOKEN` dans `.env`. La configuration complète, étape par étape, se trouve dans le [guide d'installation](docs/setup_guide.md).
+
+Les modèles de configuration sont disponibles dans [.env.example](.env.example) et [.env.variable.md](.env.variable.md). Ne jamais versionner une valeur réelle de token.
 
 ## Documentation
 

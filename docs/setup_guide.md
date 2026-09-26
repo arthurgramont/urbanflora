@@ -127,7 +127,27 @@ Le chemin de stockage des observations est :
 users/{uid}/spots/{cloudId}
 ```
 
-## 6. Vérifier les appareils
+## 6. Configurer l'environnement
+
+Créer le fichier local `.env` à partir du modèle fourni :
+
+```bash
+cp .env.example .env
+```
+
+Puis renseigner la valeur du token Firebase App Check debug :
+
+```dotenv
+FIREBASE_APP_CHECK_DEBUG_TOKEN=<votre_token_debug_firebase>
+```
+
+Cette variable est lue par `ApiConstants.appCheckDebugToken` et transmise à Firebase App Check en mode debug. En mode release, l'application utilise les providers Play Integrity et App Attest.
+
+Le fichier `.env` est chargé au démarrage et déclaré comme asset dans `pubspec.yaml`. Il est ignoré par Git et ne doit jamais être commité. La fiche [.env.variable.md](../.env.variable.md) explique où récupérer et placer la valeur.
+
+> Le token App Check debug est une donnée d'environnement de développement. Ne pas publier sa valeur dans le README, un dépôt public, une capture d'écran ou les logs.
+
+## 7. Vérifier les appareils
 
 ```bash
 flutter devices
@@ -145,7 +165,7 @@ Lancer un émulateur Android si nécessaire :
 flutter emulators --launch <id_emulateur>
 ```
 
-## 7. Lancer l'application
+## 8. Lancer l'application
 
 Lancer automatiquement sur la cible disponible :
 
@@ -168,7 +188,7 @@ flutter run -d android
 
 Le parcours démarre sur `/onboarding`. Pour tester le scan sur un émulateur sans caméra exploitable, utiliser l'import depuis la galerie.
 
-## 8. Vérifications fonctionnelles recommandées
+## 9. Vérifications fonctionnelles recommandées
 
 ### Parcours de base
 
@@ -192,7 +212,7 @@ Le parcours démarre sur `/onboarding`. Pour tester le scan sur un émulateur sa
 5. Appuyer sur la synchronisation de l'herbier.
 6. Vérifier l'analyse différée puis le statut synchronisé.
 
-## 9. Tests et contrôles qualité
+## 10. Tests et contrôles qualité
 
 ```bash
 flutter analyze
@@ -208,7 +228,7 @@ flutter test test/widget_test.dart
 
 Avant une pull request, exécuter les trois commandes de contrôle et vérifier que les fichiers générés sont à jour.
 
-## 10. Construire l'application
+## 11. Construire l'application
 
 ### Android APK
 
@@ -230,7 +250,7 @@ flutter build ipa --release
 
 La signature Android/iOS, les certificats, les profils de provisioning et les secrets de publication doivent être configurés séparément pour chaque environnement.
 
-## 11. Dépannage
+## 12. Dépannage
 
 ### Firebase ne s'initialise pas
 
@@ -266,7 +286,7 @@ Autoriser la localisation et vérifier que le service GPS est activé. Paris est
 
 Vérifier la connexion, Firebase AI, les quotas, l'authentification anonyme et les règles Firestore. Le stockage local doit continuer à fonctionner même si la synchronisation distante échoue.
 
-## 12. Checklist contributeur
+## 13. Checklist contributeur
 
 - [ ] `flutter doctor -v` ne signale pas de blocage pour la cible utilisée.
 - [ ] Les fichiers Firebase correspondent au bon projet.

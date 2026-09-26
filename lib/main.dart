@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 
+import 'constants/api_constants.dart';
 import 'constants/app_themes.dart';
 import 'constants/app_router.dart';
 import 'firebase_options.dart';
@@ -10,11 +13,17 @@ import 'firebase_options.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  final debugToken = ApiConstants.appCheckDebugToken;
   await FirebaseAppCheck.instance.activate(
-    appleProvider: AppleProvider.debug,
-    androidProvider: AndroidProvider.debug,
+    providerAndroid: kDebugMode
+        ? AndroidDebugProvider(debugToken: debugToken)
+        : AndroidPlayIntegrityProvider(),
+    providerApple: kDebugMode
+        ? AppleDebugProvider(debugToken: debugToken)
+        : AppleAppAttestProvider(),
   );
 
   await FirebaseAppCheck.instance.setTokenAutoRefreshEnabled(true);
